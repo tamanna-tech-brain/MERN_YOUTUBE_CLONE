@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import downloadmodel from "../models/downloads.js";
 import { getPagination } from "../utils/pagination.js";
-import { getSearchMatch } from "../utils/search.js";
 
 export const downloadMovie = async (req, res) => {
   try {
@@ -10,54 +9,90 @@ export const downloadMovie = async (req, res) => {
 
     const newDownload = await downloadmodel.create({
       userId,
-      movieId
+      movieId,
     });
 
     res.json({
       success: true,
       message: "Downloaded successfully",
-      data: newDownload
+      data: newDownload,
     });
-
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
-
 
 export const getDownloads = async (req, res) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
     const { search = "" } = req.query;
+
     const userId = req.user.id;
 
-    const searchMatch = getSearchMatch(search, "movieId.title");
+    // 🔥 user match
+    const matchStage = {
+      userId: new mongoose.Types.ObjectId(userId),
+    };
 
-    const downloads = await downloadmodel.aggregate([
-      {
-        $match: {
-          userId: new mongoose.Types.ObjectId(userId)
+    // 🔥 search match (safe)
+    const searchStage = search
+      ? {
+          "movieId.title": {
+            $regex: search,
+            $options: "i",
+          },
         }
-      },
+      : null;
+
+    // =======================
+    // 🔥 MAIN DATA QUERY
+    // =======================
+    const downloads = await downloadmodel.aggregate([
+      { $match: matchStage },
 
       {
         $lookup: {
           from: "movies",
           localField: "movieId",
           foreignField: "_id",
-          as: "movieId"
-        }
+          as: "movieId",
+        },
       },
 
       { $unwind: "$movieId" },
 
-      ...(searchMatch ? [{ $match: searchMatch }] : []),
+      ...(searchStage ? [{ $match: searchStage }] : []),
 
       { $skip: skip },
-      { $limit: limit }
+      { $limit: limit },
     ]);
 
-    const total = await downloadmodel.countDocuments({ userId });
+    // =======================
+    // 🔥 TOTAL COUNT QUERY
+    // =======================
+    const totalAgg = await downloadmodel.aggregate([
+      { $match: matchStage },
+
+      {
+        $lookup: {
+          from: "movies",
+          localField: "movieId",
+          foreignField: "_id",
+          as: "movieId",
+        },
+      },
+
+      { $unwind: "$movieId" },
+
+      ...(searchStage ? [{ $match: searchStage }] : []),
+
+      { $count: "total" },
+    ]);
+
+    const total = totalAgg[0]?.total || 0;
 
     res.json({
       success: true,
@@ -66,12 +101,14 @@ export const getDownloads = async (req, res) => {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     });
-
   } catch (error) {
     console.log("DOWNLOAD ERROR:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

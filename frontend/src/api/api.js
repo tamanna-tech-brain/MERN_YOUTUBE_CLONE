@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = "http://localhost:3000/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 const API = axios.create({
   baseURL: BASE_URL,
@@ -16,13 +16,9 @@ const AUTH_API = axios.create({
 AUTH_API.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
-
-    console.log("TOKEN SENT:", token);
-
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
     return config;
   },
   (error) => Promise.reject(error)
@@ -40,6 +36,7 @@ const handleError = (error) => {
 
   if (error.response?.status === 401) {
     localStorage.removeItem("token");
+    localStorage.removeItem("userId");
     window.location.href = "/login";
   }
 
@@ -53,12 +50,34 @@ const handleError = (error) => {
 API.interceptors.response.use(handleResponse, handleError);
 AUTH_API.interceptors.response.use(handleResponse, handleError);
 
+// Helper to normalize function arguments (supporting both object destructuring and raw page number queries)
+const normalizeParams = (params) => {
+  if (typeof params === "object" && params !== null) {
+    return params;
+  }
+  return { page: params };
+};
+
 // ================= AUTH =================
 export const registerUser = (data) =>
   API.post("/auth/register", data);
 
 export const loginUser = (data) =>
   API.post("/auth/login", data);
+
+export const sendOtp = (email) =>
+  API.post("/auth/send-otp", { email });
+
+export const verifyOtp = (email, otp) =>
+  API.post("/auth/verify-otp", { email, otp });
+
+// ================= FILE UPLOAD =================
+export const uploadFile = (formData) =>
+  AUTH_API.post("/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 
 // ================= USER =================
 export const getUserById = (id) =>
@@ -71,9 +90,9 @@ export const updateUserById = (id, data) =>
 export const createCast = (data) =>
   AUTH_API.post("/cast/create", data);
 
-export const getCasts = ({ page, limit, search }) =>
+export const getCasts = (params) =>
   API.get(`/cast/get`, {
-    params: { page, limit, search }
+    params: normalizeParams(params)
   });
 
 export const getCastById = (id) =>
@@ -92,9 +111,9 @@ export const createCategory = (data) =>
 export const getCategoryById = (id) =>
   API.get(`/category/get/${id}`);
 
-export const getCategories = ({ page, limit, search }) =>
+export const getCategories = (params) =>
   API.get(`/category/get`, {
-    params: { page, limit, search }
+    params: normalizeParams(params)
   });
 
 export const updateCategory = (id, data) =>
@@ -107,9 +126,9 @@ export const deleteCategory = (id) =>
 export const createMovie = (data) =>
   AUTH_API.post("/movie/create", data);
 
-export const getMovies = ({ page, limit, search, categoryId }) =>
+export const getMovies = (params) =>
   API.get(`/movie/get`, {
-    params: { page, limit, search, categoryId }
+    params: normalizeParams(params)
   });
 
 export const getMovieById = (id) =>
@@ -128,12 +147,12 @@ export const watchMovie = (movieId) =>
 export const downloadMovie = (movieId) =>
   AUTH_API.post(`/downloads/${movieId}`);
 
-export const getDownloads = ({ page, limit, search }) =>
+export const getDownloads = (params) =>
   AUTH_API.get(`/downloads`, {
-    params: { page, limit, search }
+    params: normalizeParams(params)
   });
 
-export const getHistory = ({ page, limit, search }) =>
+export const getHistory = (params) =>
   AUTH_API.get(`/history`, {
-    params: { page, limit, search }
+    params: normalizeParams(params)
   });

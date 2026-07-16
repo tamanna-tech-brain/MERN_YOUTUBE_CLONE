@@ -34,7 +34,7 @@ const movieSchema = new mongoose.Schema({
     },
 ],
     releaseYear: Number,
-    
+    poster: String,
 },
 {
         timestamps:true

@@ -78,7 +78,9 @@ export async function getMovies(req, res) {
 export async function getMoviesById(req, res) {
   try {
     const { id } = req.params;
-    const movie = await moviemodel.findById(id);
+    const movie = await moviemodel.findById(id)
+      .populate("categoryId")
+      .populate("cast");
     if (!movie) {
       return res.status(404).json({
         success: false,
@@ -110,7 +112,7 @@ export async function updateMovieById(req, res) {
         message: "Movie not found"
       });
     }
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: updateMovie,
       message: " updated successsfully"

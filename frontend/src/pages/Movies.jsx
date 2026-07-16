@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  getMovies,
-  watchMovie,
-  downloadMovie,
-  deleteMovie
-} from "../api/api";
+import { getMovies, watchMovie, downloadMovie, deleteMovie } from "../api/api";
 import { useLocation, useNavigate } from "react-router-dom";
 import noImage from "../assets/no-image.jpg";
 
@@ -15,7 +10,7 @@ const Movies = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const limit = 2;
+  const limit = 4; // Fetch 4 movies per page for better layout grid fill
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -26,7 +21,6 @@ const Movies = () => {
   const fetchMovies = async () => {
     try {
       setLoading(true);
-
       const res = await getMovies({
         page,
         limit,
@@ -34,11 +28,10 @@ const Movies = () => {
         categoryId
       });
 
-      setMovies(res.data.data);
-      setTotalPages(res.data.pagination.totalPages);
-
+      setMovies(res.data.data || []);
+      setTotalPages(res.data.pagination?.totalPages || 1);
     } catch (err) {
-      console.log("FETCH ERROR:", err);
+      console.error("FETCH MOVIES ERROR:", err);
     } finally {
       setLoading(false);
     }
@@ -51,198 +44,217 @@ const Movies = () => {
   const handleWatch = async (movieId) => {
     try {
       const res = await watchMovie(movieId);
-      alert(res.data.message || "Watched successfully");
+      alert(res.data.message || "🎬 Added to Watch History successfully!");
     } catch (err) {
-      alert(err.response?.data?.message || "Watch failed");
+      alert(err.message || "Watch action failed");
     }
   };
     
   const handleDownload = async (movieId) => {
-  try {
-    const res = await downloadMovie(movieId);
-    alert(res.data.message || "Downloaded successfully ✅");
-  } catch (err) {
-    console.log("DOWNLOAD ERROR:", err);
-
-    const msg =
-      err?.message ||
-      err?.response?.data?.message ||
-      "";
-
-    if (
-      msg.includes("duplicate") ||
-      msg.includes("E11000")
-    ) {
-      alert("Already downloaded ");
-    } else {
-      alert(msg || "Download failed ❌");
+    try {
+      const res = await downloadMovie(movieId);
+      alert("Downloaded successfully ✅");
+    } catch (err) {
+      console.error("DOWNLOAD ERROR:", err);
+      const msg = err.message || "";
+      if (msg.includes("duplicate") || msg.includes("E11000") || msg.includes("already")) {
+        alert("This movie is already in your Downloads! ⬇️");
+      } else {
+        alert(msg || "Download failed ❌");
+      }
     }
-  }
-};
-  
-
-  
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete?")) return;
-
-    await deleteMovie(id);
-    fetchMovies();
   };
 
-  const token = localStorage.getItem("token");
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this movie? This action is irreversible.")) return;
 
-  if (!token) {
-    return (
-      <div className="min-h-screen flex flex-col justify-center items-center bg-gray-900 text-white">
-        <h1 className="text-4xl font-bold mb-6">Movie App</h1>
-        <p className="text-gray-400 mb-8">
-          Please login or register to continue
-        </p>
+    try {
+      await deleteMovie(id);
+      alert("Movie deleted successfully");
+      fetchMovies();
+    } catch (err) {
+      alert(err.message || "Delete failed");
+    }
+  };
 
-        <div className="flex gap-6">
-          <button
-            onClick={() => navigate("/login")}
-            className="px-6 py-3 bg-red-600 rounded-lg hover:bg-red-700"
-          >
-            Login
-          </button>
-
-          <button
-            onClick={() => navigate("/register")}
-            className="px-6 py-3 bg-gray-700 rounded-lg hover:bg-gray-600"
-          >
-            Register
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const getPosterUrl = (posterPath) => {
+    if (!posterPath) return noImage;
+    if (posterPath.startsWith("/uploads")) {
+      return `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${posterPath}`;
+    }
+    return posterPath;
+  };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-
-      {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Movies</h2>
-
-        <div className="flex gap-3">
-          <button
-            onClick={() => navigate("/movie/create")}
-            className="bg-green-600 px-4 py-2 rounded-lg hover:bg-green-700"
-          >
-            Create
-          </button>
-
-          <button
-            onClick={() => {
-              localStorage.clear();
-              navigate("/");
-            }}
-            className="bg-red-600 px-4 py-2 rounded-lg hover:bg-red-700"
-          >
-            Logout
-          </button>
+    <div className="min-h-screen bg-neutral-950 text-white p-8">
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white to-neutral-400 bg-clip-text text-transparent">
+            Featured Movies
+          </h2>
+          <p className="text-neutral-400 text-sm mt-1">Explore our latest uploads and releases</p>
         </div>
+
+        <button
+          onClick={() => navigate("/movie/create")}
+          className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl transition duration-200 shadow-lg shadow-red-600/10 flex items-center gap-1.5 cursor-pointer"
+        >
+          <span>+ Add Movie</span>
+        </button>
       </div>
 
-      {/* SEARCH */}
-      <input
-        placeholder="Search movies..."
-        value={searchText}
-        onChange={(e) => {
-          setSearchText(e.target.value);
-          setPage(1);
-        }}
-        className="w-full mb-6 p-3 bg-gray-800 rounded-lg border border-gray-700 outline-none"
-      />
+      {/* SEARCH AND FILTER BANNER */}
+      <div className="mb-8">
+        <input
+          placeholder="🔍 Search movies by title..."
+          value={searchText}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            setPage(1);
+          }}
+          className="w-full p-4 bg-neutral-900 border border-neutral-800 rounded-2xl outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 text-white placeholder-neutral-500 transition"
+        />
+        {categoryId && (
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-xs text-neutral-400">Active Category Filter:</span>
+            <span className="text-xs bg-red-600/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full flex items-center gap-1.5">
+              Filtered Catalog
+              <button onClick={() => navigate("/movies")} className="font-bold hover:text-white ml-1">✕</button>
+            </span>
+          </div>
+        )}
+      </div>
 
-      {/* GRID */}
+      {/* MOVIES GRID */}
       {loading ? (
-        <h2 className="text-center">Loading...</h2>
+        <div className="flex justify-center items-center py-24">
+          <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {movies.map((m) => (
-            <div
-              key={m._id}
-              className="bg-gray-800 rounded-xl overflow-hidden shadow-lg hover:scale-105 transition"
-            >
-              <img
-                src={m.poster || noImage}
-                onError={(e) => (e.target.src = noImage)}
-                className="w-full h-44 object-cover"
-              />
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {movies.map((m) => (
+              <div
+                key={m._id}
+                className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden hover:scale-[1.03] transition-all duration-300 shadow-xl group flex flex-col justify-between"
+              >
+                {/* POSTER WRAPPER */}
+                <div
+                  className="relative h-64 overflow-hidden cursor-pointer"
+                  onClick={() => navigate(`/movie/${m._id}`)}
+                >
+                  <img
+                    src={getPosterUrl(m.poster)}
+                    onError={(e) => (e.target.src = noImage)}
+                    alt={m.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-transparent to-transparent opacity-85"></div>
+                  
+                  {/* Category badges */}
+                  {m.category && (
+                    <span className="absolute top-3 left-3 bg-neutral-950/80 backdrop-blur-md text-[10px] text-red-500 font-bold px-2 py-1 rounded-md border border-neutral-800">
+                      {m.category.name}
+                    </span>
+                  )}
+                  
+                  {m.releaseYear && (
+                    <span className="absolute bottom-3 right-3 bg-neutral-950/80 backdrop-blur-md text-xs text-neutral-300 font-medium px-2 py-0.5 rounded-md">
+                      {m.releaseYear}
+                    </span>
+                  )}
+                </div>
 
-              <div className="p-3">
-                <h4 className="font-semibold truncate">{m.title}</h4>
+                {/* MOVIE INFO */}
+                <div className="p-5 flex-grow flex flex-col justify-between">
+                  <div>
+                    <h3
+                      onClick={() => navigate(`/movie/${m._id}`)}
+                      className="font-bold text-lg leading-tight truncate hover:text-red-500 transition cursor-pointer capitalize"
+                    >
+                      {m.title}
+                    </h3>
+                    <p className="text-neutral-400 text-xs mt-1.5 line-clamp-2">
+                      {m.description}
+                    </p>
+                  </div>
 
-                {/* BUTTONS */}
-                <div className="grid grid-cols-2 gap-2 mt-3">
+                  {/* QUICK BUTTON ACTIONS */}
+                  <div className="grid grid-cols-2 gap-2.5 mt-5">
+                    <button
+                      onClick={() => handleWatch(m._id)}
+                      className="bg-red-600 hover:bg-red-700 text-xs font-bold py-2 rounded-xl transition cursor-pointer flex justify-center items-center gap-1.5"
+                    >
+                      <span>Play 🎬</span>
+                    </button>
 
-                  <button
-                    onClick={() => handleWatch(m._id)}
-                    className="bg-blue-600 hover:bg-blue-700 text-sm py-1 rounded"
-                  >
-                    Watch
-                  </button>
+                    <button
+                      onClick={() => handleDownload(m._id)}
+                      className="bg-neutral-800 hover:bg-neutral-700 text-xs font-bold py-2 rounded-xl transition cursor-pointer flex justify-center items-center gap-1.5"
+                    >
+                      <span>Save ⬇️</span>
+                    </button>
 
-                  <button
-                    onClick={() => handleDownload(m._id)}
-                    className="bg-purple-600 hover:bg-purple-700 text-sm py-1 rounded"
-                  >
-                    Download
-                  </button>
+                    <button
+                      onClick={() => navigate(`/movie/update/${m._id}`)}
+                      className="bg-neutral-850 hover:bg-neutral-700 border border-neutral-800 hover:border-neutral-600 text-neutral-300 hover:text-white text-xs font-semibold py-2 rounded-xl transition cursor-pointer"
+                    >
+                      Edit
+                    </button>
 
-                  <button
-                    onClick={() => navigate(`/movie/update/${m._id}`)}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-sm py-1 rounded"
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(m._id)}
-                    className="bg-red-600 hover:bg-red-700 text-sm py-1 rounded"
-                  >
-                    Delete
-                  </button>
-
+                    <button
+                      onClick={() => handleDelete(m._id)}
+                      className="bg-red-950/40 hover:bg-red-900/40 border border-red-500/20 hover:border-red-500/40 text-red-400 text-xs font-semibold py-2 rounded-xl transition cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+
+          {/* EMPTY STATE */}
+          {movies.length === 0 && (
+            <div className="text-center py-20 bg-neutral-900/50 border border-neutral-850 rounded-2xl">
+              <span className="text-4xl">🎬</span>
+              <p className="text-neutral-400 mt-3 text-sm">No movies found in this list.</p>
+              <button
+                onClick={() => { setSearchText(""); navigate("/movies"); }}
+                className="text-red-500 text-xs hover:underline mt-2 font-medium"
+              >
+                Clear all search filters
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* PAGINATION PANEL */}
+          {movies.length > 0 && (
+            <div className="flex justify-center items-center gap-6 mt-12 bg-neutral-900 border border-neutral-850 max-w-xs mx-auto p-2 rounded-2xl">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+                className="w-10 h-10 flex items-center justify-center bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 disabled:opacity-40 disabled:hover:bg-neutral-950 rounded-xl transition cursor-pointer"
+              >
+                ◀
+              </button>
+
+              <span className="text-sm font-semibold tracking-wide text-neutral-300">
+                Page {page} / {totalPages}
+              </span>
+
+              <button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+                className="w-10 h-10 flex items-center justify-center bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 disabled:opacity-40 disabled:hover:bg-neutral-950 rounded-xl transition cursor-pointer"
+              >
+                ▶
+              </button>
+            </div>
+          )}
+        </>
       )}
-
-      {/* EMPTY */}
-      {!loading && movies.length === 0 && (
-        <p className="text-center mt-10 text-gray-400">
-          No movies found
-        </p>
-      )}
-
-      {/* PAGINATION */}
-      <div className="flex justify-center items-center gap-4 mt-8">
-        <button
-          disabled={page === 1}
-          onClick={() => setPage(page - 1)}
-          className="px-4 py-2 bg-gray-700 rounded disabled:opacity-50"
-        >
-          Prev
-        </button>
-
-        <span>
-          Page {page} / {totalPages}
-        </span>
-
-        <button
-          disabled={page === totalPages}
-          onClick={() => setPage(page + 1)}
-          className="px-4 py-2 bg-gray-700 rounded disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div>
-
     </div>
   );
 };

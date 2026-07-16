@@ -5,6 +5,6 @@ import { historySchema } from "../validators/historyValidator.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 const historyRouter = Router();
 
-historyRouter.post("/watch/:movieId", authMiddleware,  validate(historySchema), historycontroller.watchMovie)
+historyRouter.post("/watch/:movieId", authMiddleware,  validate(historySchema, "params"), historycontroller.watchMovie)
 historyRouter.get("/", authMiddleware, historycontroller.getHistory)
 export default historyRouter;

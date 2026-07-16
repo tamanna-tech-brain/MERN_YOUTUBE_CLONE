@@ -7,7 +7,8 @@ export const movieSchema = Joi.object({
   language: Joi.string().required(),
   duration: Joi.number().required(),
   cast: Joi.array().items(Joi.string()).required(),
-  releaseYear: Joi.number().required()
+  releaseYear: Joi.number().required(),
+  poster: Joi.string().allow("").optional()
 });
 
 export const updateMovieSchema = Joi.object({
@@ -18,7 +19,8 @@ export const updateMovieSchema = Joi.object({
   language: Joi.string().optional(),
   duration: Joi.number().optional(),
   cast: Joi.array().items(Joi.string()).optional(),
-  releaseYear: Joi.number().optional()
+  releaseYear: Joi.number().optional(),
+  poster: Joi.string().allow("").optional()
 });
 
 
