@@ -8,17 +8,38 @@ import movieRouter from "./routes/movie.js";
 import userRouter from "./routes/user.js";
 import castRouter from "./routes/cast.js";
 import uploadRouter from "./routes/upload.js";
+import connectDB from "./db.js";
 
 import cookieParser from "cookie-parser";
 const app = express();
+
+// Initialize Database connection
+connectDB();
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://frontend-sage-nine-41.vercel.app"
+];
+
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true
 }));
 
 app.use(express.json());
 app.use(cookieParser());
-app.use("/uploads", express.static("uploads"));
+
+let staticUploadDir = "uploads";
+if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+  staticUploadDir = "/tmp";
+}
+app.use("/uploads", express.static(staticUploadDir));
 
 app.use("/api/auth", authRouter);
 app.use("/api/user", userRouter);
