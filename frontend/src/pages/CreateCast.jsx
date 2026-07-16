@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { createCast, uploadFile } from "../api/api";
+import { createCast, uploadFile, getServerUrl } from "../api/api";
 import { useNavigate } from "react-router-dom";
 
 const CreateCast = () => {
@@ -130,7 +130,7 @@ const CreateCast = () => {
               <div className="w-20 h-20 bg-neutral-900 border border-neutral-800 rounded-full overflow-hidden flex items-center justify-center relative flex-shrink-0">
                 {image ? (
                   <img
-                    src={image.startsWith("/uploads") ? `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${image}` : image}
+                    src={image.startsWith("/uploads") ? `${getServerUrl()}${image}` : image}
                     alt="Cast Preview"
                     className="w-full h-full object-cover"
                   />

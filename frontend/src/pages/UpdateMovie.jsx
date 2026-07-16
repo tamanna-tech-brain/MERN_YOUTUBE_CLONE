@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { getMovieById, updateMovie, getCategories, getCasts, uploadFile } from "../api/api";
+import { getMovieById, updateMovie, getCategories, getCasts, uploadFile, getServerUrl } from "../api/api";
 import { useParams, useNavigate } from "react-router-dom";
 
 const UpdateMovie = () => {
@@ -13,6 +13,7 @@ const UpdateMovie = () => {
   const [duration, setDuration] = useState("");
   const [releaseYear, setReleaseYear] = useState("");
   const [poster, setPoster] = useState("");
+  const [video, setVideo] = useState("");
 
   const [categoryIds, setCategoryIds] = useState([]);
   const [castIds, setCastIds] = useState([]);
@@ -22,6 +23,7 @@ const UpdateMovie = () => {
 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -70,6 +72,7 @@ const UpdateMovie = () => {
           setDuration(m.duration || "");
           setReleaseYear(m.releaseYear || "");
           setPoster(m.poster || "");
+          setVideo(m.video || "");
           setCategoryIds(m.categoryId || []);
           setCastIds(m.cast || []);
         }
@@ -113,6 +116,25 @@ const UpdateMovie = () => {
     }
   };
 
+  const handleVideoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      setVideoUploading(true);
+      setError("");
+      const res = await uploadFile(formData);
+      setVideo(res.data.url);
+    } catch (err) {
+      setError(err.message || "Failed to upload video");
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     setError("");
@@ -130,9 +152,10 @@ const UpdateMovie = () => {
         language,
         duration: Number(duration),
         releaseYear: Number(releaseYear),
-        categoryId: categoryIds,
+        categoryId: categoryIds[0], // Pass singular string since Joi schema expects string categoryId
         cast: castIds,
-        poster
+        poster,
+        video
       });
 
       alert("🎉 Movie updated successfully");
@@ -239,7 +262,7 @@ const UpdateMovie = () => {
               <div className="w-24 h-32 bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden flex items-center justify-center relative flex-shrink-0">
                 {poster ? (
                   <img
-                    src={poster.startsWith("/uploads") ? `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${poster}` : poster}
+                    src={poster.startsWith("/uploads") ? `${getServerUrl()}${poster}` : poster}
                     alt="Poster Preview"
                     className="w-full h-full object-cover"
                   />
@@ -273,6 +296,54 @@ const UpdateMovie = () => {
                 {poster && (
                   <p className="text-[10px] text-green-500 truncate mt-1">
                     Path: {poster}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* VIDEO UPLOADER */}
+          <div className="border-t border-neutral-800 pt-5">
+            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
+              Upload Video File
+            </label>
+            <div className="flex items-center gap-4 bg-neutral-950 p-4 rounded-xl border border-neutral-850">
+              <div className="w-24 h-16 bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 relative">
+                {video ? (
+                  <video
+                    src={`${getServerUrl()}${video}`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-neutral-600 text-xs text-center px-2">No Video</span>
+                )}
+                {videoUploading && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span className="text-xs text-green-500 font-bold animate-pulse">Uploading...</span>
+                  </div>
+                )}
+              </div>
+              <div className="w-full">
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoUpload}
+                  className="hidden"
+                  id="video-upload-edit"
+                  disabled={videoUploading}
+                />
+                <label
+                  htmlFor="video-upload-edit"
+                  className="inline-block bg-neutral-800 hover:bg-neutral-700 text-sm font-semibold px-4 py-2 rounded-lg cursor-pointer transition border border-neutral-700"
+                >
+                  Change Video File
+                </label>
+                <p className="text-xs text-neutral-500 mt-2">
+                  MP4, WEBM or OGG. Max size 50MB.
+                </p>
+                {video && (
+                  <p className="text-[10px] text-green-500 truncate mt-1">
+                    Path: {video}
                   </p>
                 )}
               </div>

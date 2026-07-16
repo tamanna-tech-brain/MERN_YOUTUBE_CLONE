@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getMovies, watchMovie, downloadMovie, deleteMovie } from "../api/api";
+import { getMovies, watchMovie, downloadMovie, deleteMovie, getServerUrl } from "../api/api";
 import { useLocation, useNavigate } from "react-router-dom";
 import noImage from "../assets/no-image.jpg";
 
@@ -10,7 +10,7 @@ const Movies = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const limit = 4; // Fetch 4 movies per page for better layout grid fill
+  const limit = 2; // Fetch 2 movies per page for custom layout limit
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -80,7 +80,7 @@ const Movies = () => {
   const getPosterUrl = (posterPath) => {
     if (!posterPath) return noImage;
     if (posterPath.startsWith("/uploads")) {
-      return `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${posterPath}`;
+      return `${getServerUrl()}${posterPath}`;
     }
     return posterPath;
   };

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { getCastById, updateCast, uploadFile } from "../api/api";
+import { getCastById, updateCast, uploadFile, getServerUrl } from "../api/api";
 import { useParams, useNavigate } from "react-router-dom";
 
 const UpdateCast = () => {
@@ -152,7 +152,7 @@ const UpdateCast = () => {
               <div className="w-20 h-20 bg-neutral-900 border border-neutral-800 rounded-full overflow-hidden flex items-center justify-center relative flex-shrink-0">
                 {image ? (
                   <img
-                    src={image.startsWith("/uploads") ? `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${image}` : image}
+                    src={image.startsWith("/uploads") ? `${getServerUrl()}${image}` : image}
                     alt="Cast Preview"
                     className="w-full h-full object-cover"
                   />

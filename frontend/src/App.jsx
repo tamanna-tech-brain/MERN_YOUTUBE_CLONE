@@ -7,6 +7,7 @@ import Movies from "./pages/Movies";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
+import Dashboard from "./pages/Dashboard";
 
 // Cast
 import Cast from "./pages/Cast";
@@ -41,7 +42,8 @@ function App() {
 
         <Route element={<AuthGuard />}>
 
-          <Route path="/" element={<Movies />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/movies" element={<Movies />} />
           <Route path="/profile/:id" element={<Profile />} />
 

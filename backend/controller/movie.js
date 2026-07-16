@@ -4,7 +4,7 @@ import moviemodel from "../models/movie.js";
 
 export async function createMovie(req, res) {
   try {
-    const { userId, title, description, categoryId, language, duration, cast, releaseYear} = req.body;
+    const { userId, title, description, categoryId, language, duration, cast, releaseYear, poster, video} = req.body;
     const normalizedTitle = title.toLowerCase();
     const movie = await moviemodel.create({
         userId,
@@ -14,7 +14,9 @@ export async function createMovie(req, res) {
         language,
         duration,
         cast,
-        releaseYear
+        releaseYear,
+        poster,
+        video
       });
     
     res.status(200).json({

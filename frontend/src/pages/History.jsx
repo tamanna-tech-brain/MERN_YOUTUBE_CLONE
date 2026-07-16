@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { getHistory } from "../api/api";
+import { getHistory, getServerUrl } from "../api/api";
 import { Link } from "react-router-dom";
 import noImage from "../assets/no-image.jpg";
 
 const History = () => {
   const [history, setHistory] = useState([]);
   const [page, setPage] = useState(1);
-  const [limit] = useState(4); // Display 4 entries for catalog grid alignment
+  const [limit] = useState(2); // Display 2 entries for custom layout limit
   const [search, setSearch] = useState("");
   const [pagination, setPagination] = useState({});
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ const History = () => {
   const getPosterUrl = (posterPath) => {
     if (!posterPath) return noImage;
     if (posterPath.startsWith("/uploads")) {
-      return `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${posterPath}`;
+      return `${getServerUrl()}${posterPath}`;
     }
     return posterPath;
   };

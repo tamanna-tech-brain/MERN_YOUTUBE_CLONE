@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCasts, deleteCast } from "../api/api";
+import { getCasts, deleteCast, getServerUrl } from "../api/api";
 import { useNavigate } from "react-router-dom";
 
 const Cast = () => {
@@ -9,7 +9,7 @@ const Cast = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const limit = 4; // Display 4 cast members per page for grid alignment
+  const limit = 2; // Display 2 cast members per page for custom layout limit
   const navigate = useNavigate();
 
   const fetchCasts = async () => {
@@ -49,7 +49,7 @@ const Cast = () => {
   const getCastUrl = (imagePath) => {
     if (!imagePath) return "";
     if (imagePath.startsWith("/uploads")) {
-      return `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${imagePath}`;
+      return `${getServerUrl()}${imagePath}`;
     }
     return imagePath;
   };

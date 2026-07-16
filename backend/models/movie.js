@@ -35,6 +35,7 @@ const movieSchema = new mongoose.Schema({
 ],
     releaseYear: Number,
     poster: String,
+    video: String,
 },
 {
         timestamps:true

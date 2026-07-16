@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getMovieById, watchMovie, downloadMovie } from "../api/api";
+import { getMovieById, watchMovie, downloadMovie, getServerUrl } from "../api/api";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import noImage from "../assets/no-image.jpg";
 
@@ -49,7 +49,7 @@ const MovieDetails = () => {
   const getPosterUrl = (posterPath) => {
     if (!posterPath) return noImage;
     if (posterPath.startsWith("/uploads")) {
-      return `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${posterPath}`;
+      return `${getServerUrl()}${posterPath}`;
     }
     return posterPath;
   };
@@ -57,7 +57,7 @@ const MovieDetails = () => {
   const getCastUrl = (imagePath) => {
     if (!imagePath) return "https://via.placeholder.com/150";
     if (imagePath.startsWith("/uploads")) {
-      return `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${imagePath}`;
+      return `${getServerUrl()}${imagePath}`;
     }
     return imagePath;
   };
@@ -155,6 +155,22 @@ const MovieDetails = () => {
       <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-12 mt-12">
         {/* Left 2 Cols: Details */}
         <div className="lg:col-span-2 space-y-8">
+          {movie.video && (
+            <div>
+              <h2 className="text-xl font-bold border-b border-neutral-900 pb-3 mb-4 text-neutral-200">
+                Watch Movie Video
+              </h2>
+              <div className="w-full aspect-video rounded-2xl overflow-hidden border border-neutral-850 bg-black shadow-2xl relative">
+                <video
+                  src={`${getServerUrl()}${movie.video}`}
+                  controls
+                  className="w-full h-full object-contain"
+                  poster={getPosterUrl(movie.poster)}
+                />
+              </div>
+            </div>
+          )}
+
           <div>
             <h2 className="text-xl font-bold border-b border-neutral-900 pb-3 mb-4 text-neutral-200">
               Synopsis

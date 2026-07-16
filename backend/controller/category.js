@@ -4,10 +4,11 @@ import categorymodel from "../models/category.js"
 
 export async function createCategory(req, res) {
   try {
-    const { name, description} = req.body;
+    const { name, description, image} = req.body;
     const newCategory = await categorymodel.create({  
       name,
       description,
+      image,
       });
     
     res.status(201).json({

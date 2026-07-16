@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCategories, deleteCategory } from "../api/api";
+import { getCategories, deleteCategory, getServerUrl } from "../api/api";
 import { Link, useNavigate } from "react-router-dom";
 
 const Category = () => {
@@ -9,7 +9,7 @@ const Category = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const limit = 4; // Display 4 categories per page
+  const limit = 2; // Display 2 categories per page
   const navigate = useNavigate();
 
   const fetchCategories = async () => {
@@ -46,6 +46,14 @@ const Category = () => {
     }
   };
 
+  const getCategoryUrl = (imagePath) => {
+    if (!imagePath) return "";
+    if (imagePath.startsWith("/uploads")) {
+      return `${getServerUrl()}${imagePath}`;
+    }
+    return imagePath;
+  };
+
   // Map category names to aesthetic movie-related icons
   const getCategoryIcon = (name) => {
     const n = name.toLowerCase();
@@ -66,32 +74,33 @@ const Category = () => {
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white to-neutral-400 bg-clip-text text-transparent">
-            📂 Movie Categories
+            Movie Categories
           </h2>
-          <p className="text-neutral-400 text-sm mt-1">Organize and browse movie catalogs by genre</p>
+          <p className="text-neutral-400 text-sm mt-1">Organize movies by genre and theme</p>
         </div>
 
-        <Link
-          to="/category/create"
-          className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl transition duration-200 shadow-lg shadow-red-600/10 flex items-center"
+        <button
+          onClick={() => navigate("/category/create")}
+          className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl transition duration-200 shadow-lg shadow-red-600/10 flex items-center gap-1.5 cursor-pointer"
         >
-          + Add Category
-        </Link>
+          <span>+ Add Category</span>
+        </button>
       </div>
 
       {/* SEARCH */}
-      <input
-        type="text"
-        placeholder="🔍 Search category by name..."
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value);
-          setPage(1);
-        }}
-        className="w-full mb-8 p-4 bg-neutral-900 border border-neutral-800 rounded-2xl outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 text-white placeholder-neutral-500 transition"
-      />
+      <div className="mb-8">
+        <input
+          placeholder="🔍 Search categories by name..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          className="w-full p-4 bg-neutral-900 border border-neutral-800 rounded-2xl outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 text-white placeholder-neutral-500 transition"
+        />
+      </div>
 
-      {/* GRID */}
+      {/* LIST */}
       {loading ? (
         <div className="flex justify-center items-center py-24">
           <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
@@ -104,10 +113,18 @@ const Category = () => {
                 key={c._id}
                 className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden hover:scale-[1.03] transition-all duration-300 shadow-xl p-6 flex flex-col justify-between"
               >
-                {/* ICON BOX */}
+                {/* IMAGE/ICON BOX */}
                 <div className="h-32 bg-neutral-950 border border-neutral-850 rounded-xl flex items-center justify-center text-5xl mb-4 relative overflow-hidden">
                   <div className="absolute inset-0 bg-red-600/5 blur-xl pointer-events-none"></div>
-                  <span>{getCategoryIcon(c.name)}</span>
+                  {c.image ? (
+                    <img
+                      src={getCategoryUrl(c.image)}
+                      alt={c.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span>{getCategoryIcon(c.name)}</span>
+                  )}
                 </div>
 
                 {/* INFO */}

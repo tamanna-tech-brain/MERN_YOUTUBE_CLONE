@@ -24,8 +24,8 @@ function Navbar() {
         <span className="text-2xl font-black tracking-tighter text-red-600 bg-gradient-to-r from-red-600 to-red-500 bg-clip-text">
           FLIXCAST
         </span>
-        <span className="text-[10px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded tracking-wide">
-          PRO
+        <span className="text-[10px] bg-green-600 text-white font-bold px-1.5 py-0.5 rounded tracking-wide uppercase">
+          SECURE
         </span>
       </div>
 
@@ -33,7 +33,10 @@ function Navbar() {
       <div className="flex flex-wrap justify-center items-center gap-6 text-sm font-semibold">
         {token ? (
           <>
-            <Link to="/movies" className={isActive("/movies") || isActive("/")}>
+            <Link to="/dashboard" className={isActive("/dashboard") || isActive("/") ? "text-red-500 font-bold border-b-2 border-red-500 pb-1" : "text-neutral-400 hover:text-white transition duration-200"}>
+              Dashboard
+            </Link>
+            <Link to="/movies" className={isActive("/movies")}>
               Movies
             </Link>
             <Link to="/cast" className={isActive("/cast")}>

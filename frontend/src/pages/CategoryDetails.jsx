@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCategoryById } from "../api/api";
+import { getCategoryById, getServerUrl } from "../api/api";
 import { useParams, useNavigate } from "react-router-dom";
 
 const CategoryDetails = () => {
@@ -69,9 +69,17 @@ const CategoryDetails = () => {
 
         <div className="flex flex-col items-center text-center space-y-6">
           {/* IMAGE / ICON BOX */}
-          <div className="w-32 h-32 bg-neutral-950 border border-neutral-850 rounded-2xl flex items-center justify-center text-6xl shadow-inner relative">
+          <div className="w-32 h-32 bg-neutral-950 border border-neutral-850 rounded-2xl flex items-center justify-center text-6xl shadow-inner relative overflow-hidden">
             <div className="absolute inset-0 bg-red-600/5 blur-lg"></div>
-            <span className="relative z-10">{getCategoryIcon(category.name)}</span>
+            {category.image ? (
+              <img
+                src={category.image.startsWith("/uploads") ? `${getServerUrl()}${category.image}` : category.image}
+                alt={category.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="relative z-10">{getCategoryIcon(category.name)}</span>
+            )}
           </div>
 
           <div className="space-y-2">

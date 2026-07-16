@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getDownloads } from "../api/api";
+import { getDownloads, getServerUrl } from "../api/api";
 import noImage from "../assets/no-image.jpg";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -10,7 +10,7 @@ const Downloads = () => {
   const [loading, setLoading] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
 
-  const limit = 4; // Fetch 4 downloads per page
+  const limit = 2; // Fetch 2 downloads per page
   const navigate = useNavigate();
 
   const fetchDownloads = async () => {
@@ -38,7 +38,7 @@ const Downloads = () => {
   const getPosterUrl = (posterPath) => {
     if (!posterPath) return noImage;
     if (posterPath.startsWith("/uploads")) {
-      return `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${posterPath}`;
+      return `${getServerUrl()}${posterPath}`;
     }
     return posterPath;
   };

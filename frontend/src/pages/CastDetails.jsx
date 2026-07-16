@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { getCastById } from "../api/api";
+import { getCastById, getServerUrl } from "../api/api";
 import { useParams, useNavigate } from "react-router-dom";
 
 const CastDetails = () => {
@@ -33,7 +33,7 @@ const CastDetails = () => {
   const getCastUrl = (imagePath) => {
     if (!imagePath) return "";
     if (imagePath.startsWith("/uploads")) {
-      return `${import.meta.env.VITE_API_URL || "http://localhost:3000"}${imagePath}`;
+      return `${getServerUrl()}${imagePath}`;
     }
     return imagePath;
   };
