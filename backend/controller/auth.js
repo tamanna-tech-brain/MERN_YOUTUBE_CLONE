@@ -40,9 +40,12 @@ export async function sendOtp(req, res) {
     // Send the OTP email
     await sendOtpEmail(normalizedEmail, otp);
 
+    const devOtp = (!process.env.SMTP_HOST || process.env.SMTP_HOST === "smtp.ethereal.email" || process.env.NODE_ENV !== "production") ? otp : undefined;
+
     return res.status(200).json({
       success: true,
-      message: "Verification OTP code sent to your email successfully"
+      message: "Verification OTP code sent to your email successfully",
+      otp: devOtp
     });
   } catch (error) {
     return res.status(500).json({

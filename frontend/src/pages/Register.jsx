@@ -46,6 +46,10 @@ const Register = () => {
       setLoading(true);
       const res = await sendOtp(email);
       setSuccessMsg(res.data.message || "OTP code sent to email.");
+      if (res.data.otp) {
+        setOtp(res.data.otp);
+        setSuccessMsg("✅ [Dev Mode] OTP auto-filled: " + res.data.otp);
+      }
       setStep(2);
     } catch (err) {
       setError(err.message || "Failed to send OTP. Please check details.");
