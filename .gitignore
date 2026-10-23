@@ -53,3 +53,10 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Excluded root configs & subfolder READMEs
+/package.json
+/render.yaml
+backend/README.md
+frontend/README.md
+

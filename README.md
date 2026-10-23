@@ -134,8 +134,6 @@ MERN_YOUTUBE_CLONE/
 │   ├── vercel.json          # SPA rewrite rules for zero-404 navigation
 │   └── vite.config.js       # Vite configuration
 ├── .gitignore               # Comprehensive exclusion rules
-├── package.json             # Root orchestration scripts
-├── render.yaml              # 1-Click Render deployment blueprint
 └── README.md                # Project documentation
 ```
 
@@ -233,9 +231,12 @@ cd MERN_YOUTUBE_CLONE
 
 ### 2. Install dependencies
 ```bash
-npm run install:all
+# Install backend dependencies
+cd backend && npm install
+
+# Install frontend dependencies
+cd ../frontend && npm install
 ```
-*(Or install individually: `cd backend && npm install`, then `cd ../frontend && npm install`)*
 
 ### 3. Configure environment files
 - Copy `backend/.env.example` to `backend/.env` and update your MongoDB URI.
