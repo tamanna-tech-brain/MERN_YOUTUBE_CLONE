@@ -1,193 +1,183 @@
-import { useEffect, useState } from "react";
-import { getCasts, deleteCast, getServerUrl } from "../api/api";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { getCasts, getServerUrl } from "../api/api";
+import { AuthContext } from "../context/AuthContext";
+import { Tv, Plus, CheckCircle2, Search } from "lucide-react";
 
 const Cast = () => {
   const [casts, setCasts] = useState([]);
-  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
-
-  const limit = 2; // Display 2 cast members per page for custom layout limit
+  const [subscribedMap, setSubscribedMap] = useState({});
+  const { sidebarOpen, isLoggedIn } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const fetchCasts = async () => {
+  const fetchCasts = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await getCasts({
-        page,
-        limit,
-        search
-      });
+      const res = await getCasts({ limit: 50, search }).catch(() => null);
+      let liveCasts = [];
+      if (res?.data?.data && res.data.data.length > 0) {
+        liveCasts = res.data.data.map((c) => {
+          const img = c.image || c.avatar;
+          return {
+            _id: c._id,
+            name: c.name,
+            role: c.role || "Creator / Filmmaker",
+            avatar: img
+              ? img.startsWith("/uploads")
+                ? `${getServerUrl()}${img}`
+                : img
+              : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
+            subscribers: "1.2M",
+            bio: c.bio || "Official creator on YouTube Clone.",
+            verified: true,
+          };
+        });
+      }
 
-      setCasts(res.data.data || []);
-      setTotalPages(res.data.pagination?.totalPages || 1);
+      setCasts(liveCasts);
     } catch (err) {
       console.error(err);
+      setCasts([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [search]);
 
   useEffect(() => {
     fetchCasts();
-  }, [page, search]);
-  
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to remove this cast member?")) return;
+  }, [fetchCasts]);
 
-    try {
-      await deleteCast(id);
-      alert("Cast member removed successfully");
-      fetchCasts();
-    } catch {
-      alert("Delete failed");
-    }
+  const toggleSubscribe = (id) => {
+    setSubscribedMap((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   };
 
-  const getCastUrl = (imagePath) => {
-    if (!imagePath) return "";
-    if (imagePath.startsWith("/uploads")) {
-      return `${getServerUrl()}${imagePath}`;
-    }
-    return imagePath;
-  };
+  const filtered = casts.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white p-8">
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white to-neutral-400 bg-clip-text text-transparent">
-            🎭 Cast & Stars
-          </h2>
-          <p className="text-neutral-400 text-sm mt-1">Manage and view actors starring in movie entries</p>
+    <div
+      className={`min-h-screen bg-[#0f0f0f] text-[#f1f1f1] pt-16 pb-16 transition-all duration-200 ${
+        sidebarOpen ? "md:ml-60" : "md:ml-[72px]"
+      }`}
+    >
+      <div className="p-4 sm:p-6 max-w-[1920px] mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#272727] pb-5">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2.5">
+              <Tv className="w-7 h-7 text-[#ff0000]" />
+              <span>Channels & Creators</span>
+            </h1>
+            <p className="text-xs text-[#aaaaaa] mt-1">
+              Follow featured filmmakers, artists, and educators
+            </p>
+          </div>
+
+          {isLoggedIn && (
+            <button
+              onClick={() => navigate("/cast/create")}
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#ff0000] hover:bg-[#cc0000] text-white rounded-full text-xs font-bold transition shadow-lg shadow-red-600/10 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Creator</span>
+            </button>
+          )}
         </div>
 
-        <button
-          onClick={() => navigate("/cast/create")}
-          className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl transition duration-200 shadow-lg shadow-red-600/10 flex items-center gap-1.5 cursor-pointer"
-        >
-          <span>+ Add Cast</span>
-        </button>
-      </div>
-
-      {/* SEARCH */}
-      <input
-        type="text"
-        placeholder="🔍 Search cast by name..."
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value);
-          setPage(1);
-        }}
-        className="w-full mb-8 p-4 bg-neutral-900 border border-neutral-800 rounded-2xl outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 text-white placeholder-neutral-500 transition"
-      />
-
-      {/* GRID */}
-      {loading ? (
-        <div className="flex justify-center items-center py-24">
-          <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="relative max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#717171]" />
+          <input
+            type="text"
+            placeholder="Search channels & creators..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-[#181818] border border-[#303030] focus:border-[#3ea6ff] rounded-full pl-10 pr-4 py-2 text-xs text-white placeholder-[#717171] outline-none transition"
+          />
         </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-            {casts.map((cast) => (
-              <div
-                key={cast._id}
-                className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden hover:scale-[1.03] transition-all duration-300 shadow-xl group flex flex-col justify-between"
-              >
-                {/* PHOTO PREVIEW */}
-                <div className="h-64 bg-neutral-950 flex items-center justify-center relative overflow-hidden">
-                  {cast.image ? (
-                    <img
-                      src={getCastUrl(cast.image)}
-                      alt={cast.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    // Beautiful Default SVG Avatar
-                    <svg className="w-20 h-20 text-neutral-800" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0 1 12.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 1 1-8 0 4 4 0 0 1 8 0z" />
-                    </svg>
-                  )}
-                  {cast.age && (
-                    <span className="absolute bottom-3 right-3 bg-neutral-950/80 backdrop-blur-md text-xs text-neutral-300 font-bold px-2 py-0.5 rounded-md">
-                      {cast.age} yrs
-                    </span>
-                  )}
-                </div>
 
-                {/* INFO */}
-                <div className="p-5">
-                  <h4 className="font-bold text-lg leading-tight truncate capitalize">{cast.name}</h4>
-                  <p className="text-neutral-400 text-xs mt-1.5 line-clamp-2">
-                    {cast.bio || "No biography details available."}
-                  </p>
-
-                  {/* ACTION BUTTONS */}
-                  <div className="grid grid-cols-2 gap-2 mt-5">
-                    <button
-                      onClick={() => navigate(`/cast/${cast._id}`)}
-                      className="bg-red-600 hover:bg-red-700 text-xs font-bold py-2 rounded-xl transition cursor-pointer flex justify-center items-center"
-                    >
-                      View Profile
-                    </button>
-
-                    <button
-                      onClick={() => navigate(`/cast/update/${cast._id}`)}
-                      className="bg-neutral-800 hover:bg-neutral-700 text-xs font-bold py-2 rounded-xl transition cursor-pointer flex justify-center items-center"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(cast._id)}
-                      className="col-span-2 bg-red-950/40 hover:bg-red-900/40 border border-red-500/20 hover:border-red-500/40 text-red-400 text-xs font-semibold py-2 rounded-xl transition cursor-pointer"
-                    >
-                      Delete Member
-                    </button>
-                  </div>
-                </div>
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="animate-pulse bg-[#181818] p-6 rounded-2xl space-y-4">
+                <div className="w-20 h-20 bg-[#272727] rounded-full mx-auto"></div>
+                <div className="h-4 bg-[#272727] rounded w-1/2 mx-auto"></div>
+                <div className="h-3 bg-[#272727] rounded w-3/4 mx-auto"></div>
               </div>
             ))}
           </div>
-
-          {/* EMPTY */}
-          {casts.length === 0 && (
-            <div className="text-center py-20 bg-neutral-900/50 border border-neutral-850 rounded-2xl">
-              <span className="text-4xl">🎭</span>
-              <p className="text-neutral-400 mt-3 text-sm">No cast members found.</p>
-            </div>
-          )}
-
-          {/* PAGINATION */}
-          {casts.length > 0 && (
-            <div className="flex justify-center items-center gap-6 mt-12 bg-neutral-900 border border-neutral-850 max-w-xs mx-auto p-2 rounded-2xl">
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 bg-[#181818] rounded-2xl border border-[#272727] p-8 max-w-lg mx-auto">
+            <span className="text-4xl mb-3 block">🎬</span>
+            <h3 className="text-base font-bold text-white">
+              {search ? `No creators matching "${search}"` : "No creators added yet"}
+            </h3>
+            <p className="text-xs text-[#aaaaaa] mt-1 mb-4">
+              {search ? "Try searching for a different channel name" : "Add your first creator to start showcasing channels!"}
+            </p>
+            {isLoggedIn && (
               <button
-                disabled={page === 1}
-                onClick={() => setPage(page - 1)}
-                className="w-10 h-10 flex items-center justify-center bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 disabled:opacity-40 disabled:hover:bg-neutral-950 rounded-xl transition cursor-pointer"
+                onClick={() => navigate("/cast/create")}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-semibold transition"
               >
-                ◀
+                Add Creator
               </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filtered.map((cast) => {
+              const isSub = !!subscribedMap[cast._id];
+              return (
+                <div
+                  key={cast._id}
+                  className="bg-[#181818] border border-[#272727] hover:border-[#383838] p-6 rounded-2xl flex flex-col items-center text-center justify-between group transition hover:shadow-xl"
+                >
+                  <Link to={`/cast/${cast._id}`} className="flex flex-col items-center">
+                    <div className="relative mb-3">
+                      <img
+                        src={cast.avatar}
+                        alt={cast.name}
+                        className="w-24 h-24 rounded-full object-cover ring-2 ring-[#303030] group-hover:ring-[#3ea6ff] transition"
+                      />
+                      {cast.verified && (
+                        <CheckCircle2 className="w-5 h-5 text-[#3ea6ff] absolute bottom-0 right-1 bg-[#181818] rounded-full" />
+                      )}
+                    </div>
 
-              <span className="text-sm font-semibold tracking-wide text-neutral-300">
-                Page {page} / {totalPages}
-              </span>
+                    <h3 className="font-bold text-base text-white group-hover:text-[#3ea6ff] transition">
+                      {cast.name}
+                    </h3>
+                    <span className="text-xs text-[#aaaaaa] mt-0.5">
+                      {cast.subscribers || "1.2M"} subscribers • {cast.role}
+                    </span>
+                    <p className="text-xs text-[#717171] line-clamp-2 mt-2 leading-relaxed px-2">
+                      {cast.bio}
+                    </p>
+                  </Link>
 
-              <button
-                disabled={page === totalPages}
-                onClick={() => setPage(page + 1)}
-                className="w-10 h-10 flex items-center justify-center bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 disabled:opacity-40 disabled:hover:bg-neutral-950 rounded-xl transition cursor-pointer"
-              >
-                ▶
-              </button>
-            </div>
-          )}
-        </>
-      )}
+                  <div className="mt-5 w-full flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => toggleSubscribe(cast._id)}
+                      className={`w-full py-2 px-4 rounded-full text-xs font-semibold transition cursor-pointer ${
+                        isSub
+                          ? "bg-[#272727] text-white hover:bg-[#383838]"
+                          : "bg-white text-black hover:bg-neutral-200"
+                      }`}
+                    >
+                      {isSub ? "Subscribed ✓" : "Subscribe"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

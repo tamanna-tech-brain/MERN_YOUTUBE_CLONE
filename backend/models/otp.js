@@ -13,10 +13,10 @@ const otpSchema = new mongoose.Schema({
   expiresAt: {
     type: Date,
     required: true,
-    expires: 300, // 5 minutes TTL
+    expires: 300,
   },
 }, {
   timestamps: true,
 });
 
-export default mongoose.model("Otp", otpSchema);
+export default mongoose.models.Otp || mongoose.models.otp || mongoose.model("Otp", otpSchema);

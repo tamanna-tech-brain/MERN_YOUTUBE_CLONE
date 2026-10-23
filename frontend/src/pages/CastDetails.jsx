@@ -1,37 +1,78 @@
-import { useEffect, useState, useRef } from "react";
-import { getCastById, getServerUrl } from "../api/api";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState, useContext } from "react";
+import { getCastById, getMovies, getServerUrl } from "../api/api";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+import VideoCard from "../components/VideoCard";
+import { CheckCircle2, Tv, Bell, Share2, Film } from "lucide-react";
 
 const CastDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [cast, setCast] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { sidebarOpen } = useContext(AuthContext);
 
-  const hasFetched = useRef(false);
+  const [cast, setCast] = useState(null);
+  const [creatorVideos, setCreatorVideos] = useState([]);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("videos");
 
   useEffect(() => {
-    if (!hasFetched.current) {
-      const fetchCast = async () => {
+    const fetchCast = async () => {
+      try {
+        setLoading(true);
+
+        let apiCast = null;
         try {
-          setLoading(true);
           const res = await getCastById(id);
-          setCast(res.data.data);
-          hasFetched.current = true;
+          if (res?.data?.data) {
+            apiCast = res.data.data;
+          }
         } catch (err) {
-          console.error(err);
-          setError("Failed to load cast member information.");
-        } finally {
-          setLoading(false);
+          console.debug(err);
         }
-      };
-      fetchCast();
-    }
+
+        if (apiCast) {
+          setCast(apiCast);
+
+          const moviesRes = await getMovies({ limit: 50 }).catch(() => null);
+          if (moviesRes?.data?.data) {
+            const related = moviesRes.data.data
+              .filter((m) => {
+                if (Array.isArray(m.cast)) {
+                  return m.cast.some((c) => (c._id || c) === apiCast._id || (c.name && c.name.toLowerCase() === apiCast.name?.toLowerCase()));
+                }
+                return false;
+              })
+              .map((m) => {
+                const firstCast = Array.isArray(m.cast) && m.cast[0] ? m.cast[0] : null;
+                return {
+                  _id: m._id,
+                  title: m.title,
+                  description: m.description,
+                  poster: m.poster || firstCast?.image || "",
+                  video: m.video,
+                  duration: m.duration || 180,
+                  views: "Verified",
+                  uploadedAt: new Date(m.createdAt || Date.now()).toLocaleDateString(),
+                  channelName: apiCast.name,
+                  channelAvatar: apiCast.image || apiCast.avatar,
+                };
+              });
+            setCreatorVideos(related);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCast();
   }, [id]);
 
   const getCastUrl = (imagePath) => {
-    if (!imagePath) return "";
+    if (!imagePath) return "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80";
     if (imagePath.startsWith("/uploads")) {
       return `${getServerUrl()}${imagePath}`;
     }
@@ -40,76 +81,136 @@ const CastDetails = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-950 flex justify-center items-center text-white">
-        <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#0f0f0f] pt-20 flex justify-center items-center">
+        <div className="w-10 h-10 border-4 border-[#ff0000] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  if (error || !cast) {
+  if (!cast) {
     return (
-      <div className="min-h-screen bg-neutral-950 text-white flex flex-col justify-center items-center p-6">
-        <span className="text-4xl mb-4">⚠️</span>
-        <p className="text-red-500 font-semibold">{error || "Cast member not found"}</p>
+      <div className="min-h-screen bg-[#0f0f0f] pt-24 text-center px-4">
+        <h2 className="text-xl font-bold text-white mb-2">Channel Not Found</h2>
         <button
           onClick={() => navigate("/cast")}
-          className="mt-6 bg-neutral-800 hover:bg-neutral-700 px-6 py-2 rounded-xl transition font-bold"
+          className="mt-4 px-6 py-2 bg-[#272727] text-white rounded-full text-xs font-semibold"
         >
-          Return to Cast List
+          Return to Creators
         </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white py-12 px-6 flex justify-center items-center">
-      <div className="w-full max-w-2xl bg-neutral-900 border border-neutral-850 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-        {/* Background Accent */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div
+      className={`min-h-screen bg-[#0f0f0f] text-[#f1f1f1] pt-14 pb-16 transition-all duration-200 ${
+        sidebarOpen ? "md:ml-60" : "md:ml-[72px]"
+      }`}
+    >
+      
+      <div className="h-44 sm:h-64 w-full bg-gradient-to-r from-red-900/40 via-neutral-900 to-purple-900/30 relative overflow-hidden border-b border-[#272727]">
+        <img
+          src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1600&auto=format&fit=crop&q=80"
+          alt="Channel Banner"
+          className="w-full h-full object-cover opacity-30 pointer-events-none"
+        />
+      </div>
 
-        <div className="flex flex-col md:flex-row gap-8 items-center md:items-start relative z-10">
-          {/* PHOTO */}
-          <div className="w-48 h-64 sm:w-56 sm:h-72 bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden flex items-center justify-center flex-shrink-0 shadow-lg">
-            {cast.image ? (
-              <img
-                src={getCastUrl(cast.image)}
-                alt={cast.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <svg className="w-24 h-24 text-neutral-800" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0 1 12.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 1 1-8 0 4 4 0 0 1 8 0z" />
-              </svg>
-            )}
-          </div>
-
-          {/* DETAILS */}
-          <div className="flex-grow text-center md:text-left space-y-4">
+      <div className="max-w-[1720px] mx-auto px-4 sm:px-8">
+        
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 py-6 border-b border-[#272727]">
+          <div className="flex items-center gap-5">
+            <img
+              src={getCastUrl(cast.image || cast.avatar)}
+              alt={cast.name}
+              className="w-20 sm:w-28 h-20 sm:h-28 rounded-full object-cover ring-4 ring-[#0f0f0f] shadow-2xl"
+            />
             <div>
-              <h2 className="text-3xl font-extrabold capitalize text-white mb-1.5">{cast.name}</h2>
-              {cast.age && (
-                <span className="inline-block bg-red-600/10 text-red-400 border border-red-500/20 text-xs font-bold px-3 py-1 rounded-full">
-                  Age: {cast.age} Years Old
-                </span>
-              )}
-            </div>
-
-            <div>
-              <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-1.5">Biography</h4>
-              <p className="text-neutral-300 leading-relaxed text-sm">
-                {cast.bio || "No biography details added for this member."}
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
+                  {cast.name}
+                </h1>
+                <CheckCircle2 className="w-5 h-5 text-[#3ea6ff]" />
+              </div>
+              <p className="text-xs text-[#aaaaaa] mt-1">
+                @{cast.name?.toLowerCase().replace(/\s+/g, "")} • {cast.subscribers || "1.2M"} subscribers • {creatorVideos.length} videos
+              </p>
+              <p className="text-xs text-[#717171] mt-2 max-w-xl line-clamp-2">
+                {cast.bio || "Welcome to the official channel! New videos released weekly covering industry breakdowns and filmmaking."}
               </p>
             </div>
-
-            <div className="pt-6">
-              <button
-                onClick={() => navigate("/cast")}
-                className="bg-neutral-850 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer"
-              >
-                Back to Cast List
-              </button>
-            </div>
           </div>
+
+          
+          <div className="flex items-center gap-3 self-end sm:self-center">
+            <button
+              onClick={() => setIsSubscribed(!isSubscribed)}
+              className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-semibold transition cursor-pointer ${
+                isSubscribed
+                  ? "bg-[#272727] text-white hover:bg-[#383838]"
+                  : "bg-white text-black hover:bg-neutral-200"
+              }`}
+            >
+              {isSubscribed ? "Subscribed ✓" : "Subscribe"}
+            </button>
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(window.location.href);
+                alert("Channel link copied! 📋");
+              }}
+              className="p-2.5 rounded-full bg-[#272727] hover:bg-[#383838] text-white transition"
+              title="Share channel"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        
+        <div className="flex items-center gap-8 border-b border-[#272727] text-sm font-semibold">
+          <button
+            onClick={() => setActiveTab("videos")}
+            className={`py-3 border-b-2 transition cursor-pointer ${
+              activeTab === "videos"
+                ? "border-white text-white"
+                : "border-transparent text-[#aaaaaa] hover:text-white"
+            }`}
+          >
+            Videos ({creatorVideos.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("about")}
+            className={`py-3 border-b-2 transition cursor-pointer ${
+              activeTab === "about"
+                ? "border-white text-white"
+                : "border-transparent text-[#aaaaaa] hover:text-white"
+            }`}
+          >
+            About
+          </button>
+        </div>
+
+        
+        <div className="pt-6">
+          {activeTab === "videos" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
+              {creatorVideos.map((v) => (
+                <VideoCard key={v._id} video={v} />
+              ))}
+            </div>
+          ) : (
+            <div className="max-w-2xl bg-[#181818] p-6 rounded-2xl border border-[#272727] space-y-4 text-xs">
+              <h3 className="text-base font-bold text-white">Channel Details</h3>
+              <p className="text-neutral-300 leading-relaxed">
+                {cast.bio || "No detailed bio provided."}
+              </p>
+              <div className="pt-4 border-t border-[#272727] space-y-2 text-[#aaaaaa]">
+                <p>Joined YouTube: March 2024</p>
+                <p>Verified Creator Badge: Active</p>
+                <p>Total Channel Views: 24.5M</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

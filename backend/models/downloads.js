@@ -27,4 +27,4 @@ downloadSchema.index(
   { unique: true }
 );
 
-export default mongoose.model("downloads", downloadSchema);
+export default mongoose.models.downloads || mongoose.model("downloads", downloadSchema);

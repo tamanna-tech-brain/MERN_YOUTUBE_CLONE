@@ -8,10 +8,11 @@ export const watchMovie = async (req, res) => {
     const { movieId } = req.params;
     const userId = req.user.id;
 
-    const history = await historymodel.create({
-      userId,
-      movieId
-    });
+    const history = await historymodel.findOneAndUpdate(
+      { userId, movieId },
+      { userId, movieId, watchedAt: new Date() },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     res.json({
       success: true,
@@ -31,35 +32,30 @@ export const getHistory = async (req, res) => {
     const { search = "" } = req.query;
     const userId = req.user.id;
 
-    const searchMatch = getSearchMatch(search, "movieId.title");
+    const query = {
+      $or: [
+        { userId: userId },
+        ...(mongoose.Types.ObjectId.isValid(userId) ? [{ userId: new mongoose.Types.ObjectId(userId) }] : [])
+      ]
+    };
 
-    const history = await historymodel.aggregate([
-      {
-        $match: {
-          userId: new mongoose.Types.ObjectId(userId)
-        }
-      },
+    let history = await historymodel.find(query)
+      .populate({
+        path: "movieId",
+        populate: [{ path: "cast" }, { path: "categoryId" }]
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-      {
-        $lookup: {
-          from: "movies",
-          localField: "movieId",
-          foreignField: "_id",
-          as: "movieId"
-        }
-      },
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      history = history.filter(h => h.movieId && h.movieId.title && h.movieId.title.toLowerCase().includes(s));
+    }
 
-      { $unwind: "$movieId" },
+    const total = await historymodel.countDocuments(query);
 
-      ...(searchMatch ? [{ $match: searchMatch }] : []),
-
-      { $skip: skip },
-      { $limit: limit }
-    ]);
-
-    const total = await historymodel.countDocuments({ userId });
-
-    res.json({
+    return res.json({
       success: true,
       data: history,
       pagination: {
@@ -69,9 +65,8 @@ export const getHistory = async (req, res) => {
         totalPages: Math.ceil(total / limit)
       }
     });
-
   } catch (err) {
     console.log("HISTORY ERROR:", err);
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };

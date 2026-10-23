@@ -68,7 +68,7 @@ const CategoryDetails = () => {
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="flex flex-col items-center text-center space-y-6">
-          {/* IMAGE / ICON BOX */}
+          
           <div className="w-32 h-32 bg-neutral-950 border border-neutral-850 rounded-2xl flex items-center justify-center text-6xl shadow-inner relative overflow-hidden">
             <div className="absolute inset-0 bg-red-600/5 blur-lg"></div>
             {category.image ? (

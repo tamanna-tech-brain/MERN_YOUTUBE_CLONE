@@ -21,4 +21,4 @@ userFavoriteSchema.index(
   { unique: true }
 );
 
-export default mongoose.model("userFavorites", userFavoriteSchema);
+export default mongoose.models.userFavorites || mongoose.model("userFavorites", userFavoriteSchema);

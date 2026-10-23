@@ -2,15 +2,17 @@ import mongoose from "mongoose";
 import config from "./config/config.js";
 
 const connectDB = async () => {
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
   try {
-    console.log(" Connecting to DB...");
-
-    await mongoose.connect(config.MONGO_URI);
-
-    console.log("Database connected");
+    console.log("Connecting to DB:", config.MONGO_URI ? config.MONGO_URI.replace(/:[^:]*@/, ":****@") : "none");
+    await mongoose.connect(config.MONGO_URI, {
+      serverSelectionTimeoutMS: 10000,
+    });
+    console.log("Database connected successfully");
   } catch (error) {
-    console.log(" DB Error:", error.message);
-    process.exit(1);
+    console.error("DB Connection Error:", error.message);
   }
 };
 

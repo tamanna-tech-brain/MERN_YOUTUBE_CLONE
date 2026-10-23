@@ -1,73 +1,84 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Sidebar from "./components/Sidebar";
 import AuthGuard from "./components/AuthGuard";
 
-// Pages
-import Movies from "./pages/Movies";
-import Register from "./pages/Register";
-import Login from "./pages/Login";
-import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
+import Movies from "./pages/Movies";
+import MovieDetails from "./pages/MovieDetails";
+import CreateMovie from "./pages/CreateMovie";
+import UpdateMovie from "./pages/UpdateMovie";
 
-// Cast
 import Cast from "./pages/Cast";
 import CreateCast from "./pages/CreateCast";
 import CastDetails from "./pages/CastDetails";
 import UpdateCast from "./pages/UpdateCast";
 
-// Category
 import Category from "./pages/Category";
 import CreateCategory from "./pages/CreateCategory";
 import CategoryDetails from "./pages/CategoryDetails";
 import UpdateCategory from "./pages/UpdateCategory";
 
-// Movie
-import CreateMovie from "./pages/CreateMovie";
-import MovieDetails from "./pages/MovieDetails";
-import UpdateMovie from "./pages/UpdateMovie";
+import Profile from "./pages/Profile";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
-// Extra
 import History from "./pages/History";
 import Download from "./pages/Download";
 
 function App() {
+  const location = useLocation();
+
+  const isWatchPage = location.pathname.startsWith("/movie/") && !location.pathname.includes("/create") && !location.pathname.includes("/update");
+  const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
+
   return (
-    <>
+    <div className="min-h-screen bg-[#0f0f0f] text-[#f1f1f1] flex flex-col font-sans">
+      
       <Navbar />
 
-      <Routes>
+      <div className="flex flex-1">
+        
+        {!isWatchPage && !isAuthPage && <Sidebar />}
 
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        
+        <main className="flex-1 w-full overflow-x-hidden">
+          <Routes>
+            
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/movies" element={<Movies />} />
+            <Route path="/movie/:id" element={<MovieDetails />} />
 
-        <Route element={<AuthGuard />}>
+            
+            <Route path="/cast" element={<Cast />} />
+            <Route path="/cast/:id" element={<CastDetails />} />
+            <Route path="/cast/create" element={<AuthGuard><CreateCast /></AuthGuard>} />
+            <Route path="/cast/update/:id" element={<AuthGuard><UpdateCast /></AuthGuard>} />
 
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/movies" element={<Movies />} />
-          <Route path="/profile/:id" element={<Profile />} />
+            
+            <Route path="/category" element={<Category />} />
+            <Route path="/category/:id" element={<CategoryDetails />} />
+            <Route path="/category/create" element={<AuthGuard><CreateCategory /></AuthGuard>} />
+            <Route path="/category/update/:id" element={<AuthGuard><UpdateCategory /></AuthGuard>} />
 
-          <Route path="/cast" element={<Cast />} />
-          <Route path="/cast/create" element={<CreateCast />} />
-          <Route path="/cast/update/:id" element={<UpdateCast />} />
-          <Route path="/cast/:id" element={<CastDetails />} />
+            
+            <Route path="/history" element={<AuthGuard><History /></AuthGuard>} />
+            <Route path="/downloads" element={<AuthGuard><Download /></AuthGuard>} />
 
-          <Route path="/category" element={<Category />} />
-          <Route path="/category/create" element={<CreateCategory />} />
-          <Route path="/category/update/:id" element={<UpdateCategory />} />
-          <Route path="/category/:id" element={<CategoryDetails />} />
+            
+            <Route path="/movie/create" element={<AuthGuard><CreateMovie /></AuthGuard>} />
+            <Route path="/movie/update/:id" element={<AuthGuard><UpdateMovie /></AuthGuard>} />
 
-          <Route path="/movie/create" element={<CreateMovie />} />
-          <Route path="/movie/update/:id" element={<UpdateMovie />} />
-          <Route path="/movie/:id" element={<MovieDetails />} />
-
-          <Route path="/history" element={<History />} />
-          <Route path="/downloads" element={<Download />} />
-
-        </Route>
-
-      </Routes>
-    </>
+            
+            <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
+            <Route path="/profile/:id" element={<Profile />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Routes>
+        </main>
+      </div>
+    </div>
   );
 }
 

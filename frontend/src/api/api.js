@@ -28,7 +28,16 @@ AUTH_API.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-const handleResponse = (res) => res;
+const handleResponse = (res) => {
+  if (res?.data && res.data.success === false) {
+    return Promise.reject({
+      success: false,
+      message: res.data.message || "Request failed",
+      data: res.data,
+    });
+  }
+  return res;
+};
 
 const handleError = (error) => {
   const message =
@@ -41,7 +50,10 @@ const handleError = (error) => {
   if (error.response?.status === 401) {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
-    window.location.href = "/login";
+    const protectedRoutes = ["/movie/create", "/movie/update", "/cast/create", "/category/create", "/profile"];
+    if (protectedRoutes.some(route => window.location.pathname.startsWith(route))) {
+      window.location.href = "/login";
+    }
   }
 
   return Promise.reject({
@@ -54,7 +66,6 @@ const handleError = (error) => {
 API.interceptors.response.use(handleResponse, handleError);
 AUTH_API.interceptors.response.use(handleResponse, handleError);
 
-// Helper to normalize function arguments (supporting both object destructuring and raw page number queries)
 const normalizeParams = (params) => {
   if (typeof params === "object" && params !== null) {
     return params;
@@ -62,7 +73,6 @@ const normalizeParams = (params) => {
   return { page: params };
 };
 
-// ================= AUTH =================
 export const registerUser = (data) =>
   API.post("/auth/register", data);
 
@@ -75,7 +85,6 @@ export const sendOtp = (email) =>
 export const verifyOtp = (email, otp) =>
   API.post("/auth/verify-otp", { email, otp });
 
-// ================= FILE UPLOAD =================
 export const uploadFile = (formData) =>
   AUTH_API.post("/upload", formData, {
     headers: {
@@ -83,14 +92,12 @@ export const uploadFile = (formData) =>
     },
   });
 
-// ================= USER =================
 export const getUserById = (id) =>
   API.get(`/user/get/${id}`);
 
 export const updateUserById = (id, data) =>
   AUTH_API.put(`/user/update/${id}`, data);
 
-// ================= CAST =================
 export const createCast = (data) =>
   AUTH_API.post("/cast/create", data);
 
@@ -108,7 +115,6 @@ export const updateCast = (id, data) =>
 export const deleteCast = (id) =>
   AUTH_API.delete(`/cast/delete/${id}`);
 
-// ================= CATEGORY =================
 export const createCategory = (data) =>
   AUTH_API.post("/category/create", data);
 
@@ -126,7 +132,6 @@ export const updateCategory = (id, data) =>
 export const deleteCategory = (id) =>
   AUTH_API.delete(`/category/delete/${id}`);
 
-// ================= MOVIE =================
 export const createMovie = (data) =>
   AUTH_API.post("/movie/create", data);
 
@@ -144,7 +149,15 @@ export const updateMovie = (id, data) =>
 export const deleteMovie = (id) =>
   AUTH_API.delete(`/movie/delete/${id}`);
 
-// ================= HISTORY =================
+export const likeMovie = (id) =>
+  AUTH_API.post(`/movie/${id}/like`);
+
+export const dislikeMovie = (id) =>
+  AUTH_API.post(`/movie/${id}/dislike`);
+
+export const getVideoStreamUrl = (id) =>
+  `${BASE_URL}/movie/stream/${id}`;
+
 export const watchMovie = (movieId) =>
   AUTH_API.post(`/history/watch/${movieId}`);
 
@@ -160,3 +173,24 @@ export const getHistory = (params) =>
   AUTH_API.get(`/history`, {
     params: normalizeParams(params)
   });
+
+export const getComments = (movieId) =>
+  API.get(`/comment/${movieId}`);
+
+export const createComment = (movieId, text) =>
+  AUTH_API.post(`/comment/${movieId}`, { text });
+
+export const deleteComment = (id) =>
+  AUTH_API.delete(`/comment/${id}`);
+
+export const toggleSubscription = (channelId) =>
+  AUTH_API.post(`/subscription/toggle/${channelId}`);
+
+export const checkSubscription = (channelId) =>
+  AUTH_API.get(`/subscription/status/${channelId}`);
+
+export const getSubscriptions = () =>
+  AUTH_API.get("/subscription/list");
+
+export const getSubscriberCount = (channelId) =>
+  API.get(`/subscription/count/${channelId}`);

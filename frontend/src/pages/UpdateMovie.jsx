@@ -37,7 +37,6 @@ const UpdateMovie = () => {
         setLoading(true);
         setError("");
 
-        // Fetch categories & casts
         let allCategories = [];
         let allCasts = [];
 
@@ -62,19 +61,27 @@ const UpdateMovie = () => {
         setCategories(allCategories);
         setCasts(allCasts);
 
-        // Fetch Movie Details
         const resMovie = await getMovieById(id);
         const m = resMovie.data.data;
         if (m) {
-          setTitle(m.title);
-          setDescription(m.description);
+          setTitle(m.title || "");
+          setDescription(m.description || "");
           setLanguage(m.language || "");
           setDuration(m.duration || "");
           setReleaseYear(m.releaseYear || "");
           setPoster(m.poster || "");
           setVideo(m.video || "");
-          setCategoryIds(m.categoryId || []);
-          setCastIds(m.cast || []);
+
+          const catIds = Array.isArray(m.categoryId)
+            ? m.categoryId.map((c) => (typeof c === "object" && c !== null ? c._id : c)).filter(Boolean)
+            : m.categoryId
+            ? [typeof m.categoryId === "object" ? m.categoryId._id : m.categoryId].filter(Boolean)
+            : [];
+          const cstIds = Array.isArray(m.cast)
+            ? m.cast.map((c) => (typeof c === "object" && c !== null ? c._id : c)).filter(Boolean)
+            : [];
+          setCategoryIds(catIds);
+          setCastIds(cstIds);
         }
       } catch (err) {
         console.error("Fetch movie error:", err);
@@ -146,14 +153,17 @@ const UpdateMovie = () => {
 
     try {
       setSubmitting(true);
+      const resolvedCatId = typeof categoryIds[0] === "object" && categoryIds[0] !== null ? categoryIds[0]._id : categoryIds[0];
+      const resolvedCastIds = castIds.map(c => typeof c === "object" && c !== null ? c._id : c);
+
       await updateMovie(id, {
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
         language,
         duration: Number(duration),
         releaseYear: Number(releaseYear),
-        categoryId: categoryIds[0], // Pass singular string since Joi schema expects string categoryId
-        cast: castIds,
+        categoryId: resolvedCatId,
+        cast: resolvedCastIds,
         poster,
         video
       });
@@ -302,7 +312,7 @@ const UpdateMovie = () => {
             </div>
           </div>
 
-          {/* VIDEO UPLOADER */}
+          
           <div className="border-t border-neutral-800 pt-5">
             <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
               Upload Video File

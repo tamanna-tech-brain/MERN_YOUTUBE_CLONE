@@ -12,14 +12,14 @@ export const sendOtpEmail = async (email, otp) => {
   });
 
   const mailOptions = {
-    from: `"Movie App Auth" <${process.env.SMTP_USER || "auth@movieapp.com"}>`,
+    from: `"YouTube App Auth" <${process.env.SMTP_USER || "auth@youtubeapp.com"}>`,
     to: email,
-    subject: "Your Movie App Verification OTP",
+    subject: "Your YouTube App Verification OTP",
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #0f0f0f; color: #ffffff; border-radius: 10px; max-width: 500px; margin: auto; border: 1px solid #2a2a2a;">
-        <h2 style="color: #ef4444; text-align: center; margin-bottom: 20px;">🎬 Movie App</h2>
+        <h2 style="color: #ef4444; text-align: center; margin-bottom: 20px;">🎬 YouTube Clone</h2>
         <p style="font-size: 16px;">Hello,</p>
-        <p style="font-size: 15px; line-height: 1.5;">Thank you for registering on our Movie platform. To verify your email address, please use the following One-Time Password (OTP):</p>
+        <p style="font-size: 15px; line-height: 1.5;">Thank you for registering on our platform. To verify your email address, please use the following One-Time Password (OTP):</p>
         <div style="font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 5px; color: #ef4444; margin: 30px 0; background-color: #1c1c1c; padding: 15px; border-radius: 8px; border: 1px solid #333333;">
           ${otp}
         </div>
@@ -29,19 +29,14 @@ export const sendOtpEmail = async (email, otp) => {
   };
 
   try {
-    // Only send actual mail if SMTP_HOST is explicitly configured
     if (process.env.SMTP_HOST && process.env.SMTP_HOST !== "smtp.ethereal.email") {
       await transporter.sendMail(mailOptions);
-      console.log(`✉️ OTP email sent to ${email}`);
+      console.log(`OTP email sent to ${email}`);
     } else {
-      console.log("\n----------------------------------------------");
-      console.log(`🔑 [SMTP NOT CONFIGURED] OTP for ${email}: ${otp}`);
-      console.log("----------------------------------------------\n");
+      console.log(`OTP for ${email}: ${otp}`);
     }
   } catch (error) {
-    console.error("❌ Mailer Error: ", error.message);
-    console.log("\n----------------------------------------------");
-    console.log(`🔑 [MAILER FALLBACK] OTP for ${email}: ${otp}`);
-    console.log("----------------------------------------------\n");
+    console.error("Mailer Error: ", error.message);
+    console.log(`OTP fallback for ${email}: ${otp}`);
   }
 };

@@ -16,4 +16,11 @@ const castSchema = new mongoose.Schema({
   timestamps: true
 });
 
-export default mongoose.model("cast", castSchema);
+const Cast = mongoose.models.casts || mongoose.model("casts", castSchema);
+if (!mongoose.models.cast) {
+  try {
+    mongoose.model("cast", castSchema);
+  } catch {}
+}
+
+export default Cast;

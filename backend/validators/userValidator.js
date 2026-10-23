@@ -28,7 +28,7 @@ export const updateUserSchema = Joi.object({
 });
 
 export const userIdSchema = Joi.object({
-  id: Joi.string().length(24).hex().required()
+  id: Joi.alternatives().try(Joi.string().valid("me"), Joi.string().length(24).hex()).required()
 });
 
 export default { registerSchema, loginSchema, updateUserSchema, userIdSchema, sendOtpSchema, verifyOtpSchema };

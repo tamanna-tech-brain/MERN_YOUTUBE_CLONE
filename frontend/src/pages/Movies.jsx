@@ -1,260 +1,228 @@
-import { useEffect, useState } from "react";
-import { getMovies, watchMovie, downloadMovie, deleteMovie, getServerUrl } from "../api/api";
+import { useEffect, useState, useContext } from "react";
+import { getMovies, getCategories } from "../api/api";
 import { useLocation, useNavigate } from "react-router-dom";
-import noImage from "../assets/no-image.jpg";
+import VideoCard from "../components/VideoCard";
+import { AuthContext } from "../context/AuthContext";
+import { Search, Compass, Plus, SlidersHorizontal } from "lucide-react";
 
 const Movies = () => {
   const [movies, setMovies] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [categories, setCategories] = useState([{ _id: "all", name: "All" }]);
+  const [sortBy, setSortBy] = useState("latest");
   const [loading, setLoading] = useState(false);
 
-  const limit = 2; // Fetch 2 movies per page for custom layout limit
-
+  const { sidebarOpen } = useContext(AuthContext);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const params = new URLSearchParams(location.search);
-  const categoryId = params.get("category");
-
-  const fetchMovies = async () => {
-    try {
-      setLoading(true);
-      const res = await getMovies({
-        page,
-        limit,
-        search: searchText,
-        categoryId
-      });
-
-      setMovies(res.data.data || []);
-      setTotalPages(res.data.pagination?.totalPages || 1);
-    } catch (err) {
-      console.error("FETCH MOVIES ERROR:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const q = params.get("search");
+    const cat = params.get("category");
+    if (q) setSearchText(q);
+    if (cat) setSelectedCategory(cat);
+  }, [location.search]);
 
   useEffect(() => {
-    fetchMovies();
-  }, [page, searchText, categoryId]);
+    const fetchCatalog = async () => {
+      try {
+        setLoading(true);
 
-  const handleWatch = async (movieId) => {
-    try {
-      const res = await watchMovie(movieId);
-      alert(res.data.message || "🎬 Added to Watch History successfully!");
-    } catch (err) {
-      alert(err.message || "Watch action failed");
-    }
-  };
-    
-  const handleDownload = async (movieId) => {
-    try {
-      const res = await downloadMovie(movieId);
-      alert("Downloaded successfully ✅");
-    } catch (err) {
-      console.error("DOWNLOAD ERROR:", err);
-      const msg = err.message || "";
-      if (msg.includes("duplicate") || msg.includes("E11000") || msg.includes("already")) {
-        alert("This movie is already in your Downloads! ⬇️");
-      } else {
-        alert(msg || "Download failed ❌");
+        const catRes = await getCategories({ limit: 50 }).catch(() => null);
+        if (catRes?.data?.data && catRes.data.data.length > 0) {
+          const apiCats = catRes.data.data.map((c) => ({
+            _id: c._id,
+            name: c.name,
+          }));
+          setCategories([{ _id: "all", name: "All" }, ...apiCats]);
+        }
+
+        const movieRes = await getMovies({
+          page: 1,
+          limit: 100,
+          search: searchText,
+        }).catch(() => null);
+
+        let liveMovies = [];
+        if (movieRes?.data?.data && movieRes.data.data.length > 0) {
+          liveMovies = movieRes.data.data.map((m) => {
+            const firstCast = Array.isArray(m.cast) && m.cast[0] ? m.cast[0] : null;
+            const catObj = Array.isArray(m.categoryId) ? m.categoryId[0] : m.categoryId;
+            const posterUrl = m.poster || firstCast?.image || "";
+            return {
+              _id: m._id,
+              title: m.title,
+              description: m.description,
+              poster: posterUrl,
+              video: m.video,
+              duration: m.duration || 180,
+              releaseYear: m.releaseYear,
+              views: "Verified on YT",
+              uploadedAt: new Date(m.createdAt || Date.now()).toLocaleDateString(),
+              channelName: m.userId?.username || firstCast?.name || "Official Channel",
+              channelAvatar: firstCast?.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80",
+              categoryName: catObj?.name || m.category?.name || "General",
+              categoryId: catObj?._id || m.categoryId,
+              cast: m.cast || [],
+            };
+          });
+        }
+
+        setMovies(liveMovies);
+      } catch (err) {
+        console.error("Explore fetch error:", err);
+        setMovies([]);
+      } finally {
+        setLoading(false);
       }
-    }
-  };
+    };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this movie? This action is irreversible.")) return;
+    fetchCatalog();
+  }, [searchText]);
 
-    try {
-      await deleteMovie(id);
-      alert("Movie deleted successfully");
-      fetchMovies();
-    } catch (err) {
-      alert(err.message || "Delete failed");
-    }
-  };
+  const filtered = movies
+    .filter((v) => {
+      const matchesSearch =
+        !searchText.trim() ||
+        v.title.toLowerCase().includes(searchText.toLowerCase()) ||
+        v.description?.toLowerCase().includes(searchText.toLowerCase()) ||
+        v.channelName?.toLowerCase().includes(searchText.toLowerCase());
 
-  const getPosterUrl = (posterPath) => {
-    if (!posterPath) return noImage;
-    if (posterPath.startsWith("/uploads")) {
-      return `${getServerUrl()}${posterPath}`;
-    }
-    return posterPath;
-  };
+      const matchesCat =
+        selectedCategory === "all" ||
+        selectedCategory === "cat_all" ||
+        v.categoryId === selectedCategory ||
+        (Array.isArray(v.categoryId) && v.categoryId.some(c => (c._id || c) === selectedCategory)) ||
+        (v.categoryName && v.categoryName.toLowerCase().includes(selectedCategory.toLowerCase()));
+
+      return matchesSearch && matchesCat;
+    })
+    .sort((a, b) => {
+      if (sortBy === "latest") return (b.releaseYear || 2026) - (a.releaseYear || 2026);
+      if (sortBy === "duration") return (b.duration || 0) - (a.duration || 0);
+      return 0;
+    });
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white p-8">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white to-neutral-400 bg-clip-text text-transparent">
-            Featured Movies
-          </h2>
-          <p className="text-neutral-400 text-sm mt-1">Explore our latest uploads and releases</p>
-        </div>
-
-        <button
-          onClick={() => navigate("/movie/create")}
-          className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl transition duration-200 shadow-lg shadow-red-600/10 flex items-center gap-1.5 cursor-pointer"
-        >
-          <span>+ Add Movie</span>
-        </button>
-      </div>
-
-      {/* SEARCH AND FILTER BANNER */}
-      <div className="mb-8">
-        <input
-          placeholder="🔍 Search movies by title..."
-          value={searchText}
-          onChange={(e) => {
-            setSearchText(e.target.value);
-            setPage(1);
-          }}
-          className="w-full p-4 bg-neutral-900 border border-neutral-800 rounded-2xl outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 text-white placeholder-neutral-500 transition"
-        />
-        {categoryId && (
-          <div className="flex items-center gap-2 mt-3">
-            <span className="text-xs text-neutral-400">Active Category Filter:</span>
-            <span className="text-xs bg-red-600/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full flex items-center gap-1.5">
-              Filtered Catalog
-              <button onClick={() => navigate("/movies")} className="font-bold hover:text-white ml-1">✕</button>
-            </span>
+    <div
+      className={`min-h-screen bg-[#0f0f0f] text-[#f1f1f1] pt-16 pb-16 transition-all duration-200 ${
+        sidebarOpen ? "md:ml-60" : "md:ml-[72px]"
+      }`}
+    >
+      <div className="p-4 sm:p-6 max-w-[1920px] mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#272727] pb-5">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2.5">
+              <Compass className="w-7 h-7 text-[#ff0000]" />
+              <span>Explore YouTube Videos</span>
+            </h1>
+            <p className="text-xs text-[#aaaaaa] mt-1">
+              Discover popular trends, tutorials, movies, and original uploads
+            </p>
           </div>
-        )}
-      </div>
 
-      {/* MOVIES GRID */}
-      {loading ? (
-        <div className="flex justify-center items-center py-24">
-          <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+          <button
+            onClick={() => navigate("/movie/create")}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#ff0000] hover:bg-[#cc0000] text-white rounded-full text-xs font-bold transition shadow-lg shadow-red-600/10 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Upload Video</span>
+          </button>
         </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-            {movies.map((m) => (
-              <div
-                key={m._id}
-                className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden hover:scale-[1.03] transition-all duration-300 shadow-xl group flex flex-col justify-between"
-              >
-                {/* POSTER WRAPPER */}
-                <div
-                  className="relative h-64 overflow-hidden cursor-pointer"
-                  onClick={() => navigate(`/movie/${m._id}`)}
-                >
-                  <img
-                    src={getPosterUrl(m.poster)}
-                    onError={(e) => (e.target.src = noImage)}
-                    alt={m.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-transparent to-transparent opacity-85"></div>
-                  
-                  {/* Category badges */}
-                  {m.category && (
-                    <span className="absolute top-3 left-3 bg-neutral-950/80 backdrop-blur-md text-[10px] text-red-500 font-bold px-2 py-1 rounded-md border border-neutral-800">
-                      {m.category.name}
-                    </span>
-                  )}
-                  
-                  {m.releaseYear && (
-                    <span className="absolute bottom-3 right-3 bg-neutral-950/80 backdrop-blur-md text-xs text-neutral-300 font-medium px-2 py-0.5 rounded-md">
-                      {m.releaseYear}
-                    </span>
-                  )}
-                </div>
 
-                {/* MOVIE INFO */}
-                <div className="p-5 flex-grow flex flex-col justify-between">
-                  <div>
-                    <h3
-                      onClick={() => navigate(`/movie/${m._id}`)}
-                      className="font-bold text-lg leading-tight truncate hover:text-red-500 transition cursor-pointer capitalize"
-                    >
-                      {m.title}
-                    </h3>
-                    <p className="text-neutral-400 text-xs mt-1.5 line-clamp-2">
-                      {m.description}
-                    </p>
-                  </div>
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#717171]" />
+            <input
+              type="text"
+              placeholder="Filter by title, channel, keywords..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="w-full bg-[#181818] border border-[#303030] focus:border-[#3ea6ff] rounded-full pl-10 pr-4 py-2 text-xs text-white placeholder-[#717171] outline-none transition"
+            />
+          </div>
 
-                  {/* QUICK BUTTON ACTIONS */}
-                  <div className="grid grid-cols-2 gap-2.5 mt-5">
-                    <button
-                      onClick={() => handleWatch(m._id)}
-                      className="bg-red-600 hover:bg-red-700 text-xs font-bold py-2 rounded-xl transition cursor-pointer flex justify-center items-center gap-1.5"
-                    >
-                      <span>Play 🎬</span>
-                    </button>
+          <div className="flex items-center gap-2 text-xs self-end md:self-auto">
+            <SlidersHorizontal className="w-4 h-4 text-[#aaaaaa]" />
+            <span className="text-[#aaaaaa] font-medium">Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-[#181818] border border-[#303030] text-white rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
+            >
+              <option value="latest">Latest Released</option>
+              <option value="duration">Longest Duration</option>
+            </select>
+          </div>
+        </div>
 
-                    <button
-                      onClick={() => handleDownload(m._id)}
-                      className="bg-neutral-800 hover:bg-neutral-700 text-xs font-bold py-2 rounded-xl transition cursor-pointer flex justify-center items-center gap-1.5"
-                    >
-                      <span>Save ⬇️</span>
-                    </button>
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+          {categories.map((c) => (
+            <button
+              key={c._id}
+              onClick={() => setSelectedCategory(c._id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                selectedCategory === c._id
+                  ? "bg-[#f1f1f1] text-[#0f0f0f]"
+                  : "bg-[#272727] text-[#f1f1f1] hover:bg-[#383838]"
+              }`}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
 
-                    <button
-                      onClick={() => navigate(`/movie/update/${m._id}`)}
-                      className="bg-neutral-850 hover:bg-neutral-700 border border-neutral-800 hover:border-neutral-600 text-neutral-300 hover:text-white text-xs font-semibold py-2 rounded-xl transition cursor-pointer"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(m._id)}
-                      className="bg-red-950/40 hover:bg-red-900/40 border border-red-500/20 hover:border-red-500/40 text-red-400 text-xs font-semibold py-2 rounded-xl transition cursor-pointer"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 pt-2">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="animate-pulse space-y-3">
+                <div className="aspect-video bg-[#272727] rounded-xl"></div>
+                <div className="h-4 bg-[#272727] rounded w-3/4"></div>
+                <div className="h-3 bg-[#272727] rounded w-1/2"></div>
               </div>
             ))}
           </div>
-
-          {/* EMPTY STATE */}
-          {movies.length === 0 && (
-            <div className="text-center py-20 bg-neutral-900/50 border border-neutral-850 rounded-2xl">
-              <span className="text-4xl">🎬</span>
-              <p className="text-neutral-400 mt-3 text-sm">No movies found in this list.</p>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 bg-[#181818] rounded-2xl border border-[#272727] p-8 max-w-lg mx-auto">
+            <span className="text-4xl mb-3 block">🔍</span>
+            <h3 className="text-base font-bold text-white">
+              {searchText ? `No results matching "${searchText}"` : "No videos uploaded yet"}
+            </h3>
+            <p className="text-xs text-[#aaaaaa] mt-1 mb-4">
+              {searchText
+                ? "Try checking your spelling or use different keywords"
+                : "Upload a video to make it appear on the explore page."}
+            </p>
+            <div className="flex items-center justify-center gap-3">
               <button
-                onClick={() => { setSearchText(""); navigate("/movies"); }}
-                className="text-red-500 text-xs hover:underline mt-2 font-medium"
+                onClick={() => navigate("/movie/create")}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs font-semibold transition"
               >
-                Clear all search filters
+                Upload Video
               </button>
+              {(searchText || selectedCategory !== "all") && (
+                <button
+                  onClick={() => {
+                    setSearchText("");
+                    setSelectedCategory("all");
+                  }}
+                  className="px-5 py-2 bg-[#272727] hover:bg-[#383838] text-white rounded-full text-xs font-semibold transition"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
-          )}
-
-          {/* PAGINATION PANEL */}
-          {movies.length > 0 && (
-            <div className="flex justify-center items-center gap-6 mt-12 bg-neutral-900 border border-neutral-850 max-w-xs mx-auto p-2 rounded-2xl">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage(page - 1)}
-                className="w-10 h-10 flex items-center justify-center bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 disabled:opacity-40 disabled:hover:bg-neutral-950 rounded-xl transition cursor-pointer"
-              >
-                ◀
-              </button>
-
-              <span className="text-sm font-semibold tracking-wide text-neutral-300">
-                Page {page} / {totalPages}
-              </span>
-
-              <button
-                disabled={page === totalPages}
-                onClick={() => setPage(page + 1)}
-                className="w-10 h-10 flex items-center justify-center bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 disabled:opacity-40 disabled:hover:bg-neutral-950 rounded-xl transition cursor-pointer"
-              >
-                ▶
-              </button>
-            </div>
-          )}
-        </>
-      )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 pt-2">
+            {filtered.map((video) => (
+              <VideoCard key={video._id} video={video} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

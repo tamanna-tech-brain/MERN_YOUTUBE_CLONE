@@ -7,10 +7,11 @@ export const downloadMovie = async (req, res) => {
     const { movieId } = req.params;
     const userId = req.user.id;
 
-    const newDownload = await downloadmodel.create({
-      userId,
-      movieId,
-    });
+    const newDownload = await downloadmodel.findOneAndUpdate(
+      { userId, movieId },
+      { userId, movieId, downloadedAt: new Date() },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     res.json({
       success: true,
@@ -29,72 +30,32 @@ export const getDownloads = async (req, res) => {
   try {
     const { page, limit, skip } = getPagination(req.query);
     const { search = "" } = req.query;
-
     const userId = req.user.id;
 
-    // 🔥 user match
-    const matchStage = {
-      userId: new mongoose.Types.ObjectId(userId),
+    const query = {
+      $or: [
+        { userId: userId },
+        ...(mongoose.Types.ObjectId.isValid(userId) ? [{ userId: new mongoose.Types.ObjectId(userId) }] : [])
+      ]
     };
 
-    // 🔥 search match (safe)
-    const searchStage = search
-      ? {
-          "movieId.title": {
-            $regex: search,
-            $options: "i",
-          },
-        }
-      : null;
+    let downloads = await downloadmodel.find(query)
+      .populate({
+        path: "movieId",
+        populate: [{ path: "cast" }, { path: "categoryId" }]
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    // =======================
-    // 🔥 MAIN DATA QUERY
-    // =======================
-    const downloads = await downloadmodel.aggregate([
-      { $match: matchStage },
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      downloads = downloads.filter(d => d.movieId && d.movieId.title && d.movieId.title.toLowerCase().includes(s));
+    }
 
-      {
-        $lookup: {
-          from: "movies",
-          localField: "movieId",
-          foreignField: "_id",
-          as: "movieId",
-        },
-      },
+    const total = await downloadmodel.countDocuments(query);
 
-      { $unwind: "$movieId" },
-
-      ...(searchStage ? [{ $match: searchStage }] : []),
-
-      { $skip: skip },
-      { $limit: limit },
-    ]);
-
-    // =======================
-    // 🔥 TOTAL COUNT QUERY
-    // =======================
-    const totalAgg = await downloadmodel.aggregate([
-      { $match: matchStage },
-
-      {
-        $lookup: {
-          from: "movies",
-          localField: "movieId",
-          foreignField: "_id",
-          as: "movieId",
-        },
-      },
-
-      { $unwind: "$movieId" },
-
-      ...(searchStage ? [{ $match: searchStage }] : []),
-
-      { $count: "total" },
-    ]);
-
-    const total = totalAgg[0]?.total || 0;
-
-    res.json({
+    return res.json({
       success: true,
       data: downloads,
       pagination: {
@@ -105,8 +66,7 @@ export const getDownloads = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log("DOWNLOAD ERROR:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message,
     });

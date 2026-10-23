@@ -2,25 +2,32 @@ import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { v2 as cloudinary } from "cloudinary";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const uploadRouter = Router();
 
-// Ensure uploads directory exists (use /tmp on serverless environments)
-let uploadDir = "uploads";
-if (process.env.VERCEL || process.env.NODE_ENV === "production") {
-  uploadDir = "/tmp";
+if (process.env.CLOUDINARY_CLOUD_NAME) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
 }
+
+let uploadDir = (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)
+  ? "/tmp"
+  : path.join(process.cwd(), "uploads");
 
 try {
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 } catch (error) {
-  console.warn("Could not create uploads directory, relying on fallback:", error.message);
+  console.warn("Could not create uploads directory, falling back to /tmp:", error.message);
+  uploadDir = "/tmp";
 }
 
-// Configure storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
@@ -32,7 +39,6 @@ const storage = multer.diskStorage({
   },
 });
 
-// File filter (images and videos)
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif|webp|mp4|mkv|avi|mov|webm/;
   const mimetype = allowedTypes.test(file.mimetype);
@@ -47,25 +53,51 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  limits: { fileSize: 50 * 1024 * 1024 },
 });
 
-// POST upload file (protected by authMiddleware)
-uploadRouter.post("/", authMiddleware, upload.single("file"), (req, res) => {
-  try {
+uploadRouter.post("/", authMiddleware, (req, res) => {
+  upload.single("file")(req, res, async (err) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+    } else if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+
     if (!req.file) {
       return res.status(400).json({ success: false, message: "No file uploaded" });
     }
 
+    // Cloudinary Cloud Storage (if credentials provided)
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+      try {
+        const isVideo = req.file.mimetype.startsWith("video");
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          resource_type: isVideo ? "video" : "image",
+          folder: "youtube_clone",
+        });
+
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {}
+
+        return res.status(200).json({
+          success: true,
+          message: "File uploaded to Cloudinary successfully",
+          url: uploadResult.secure_url,
+        });
+      } catch (cloudErr) {
+        console.warn("Cloudinary upload error, using local fallback:", cloudErr.message);
+      }
+    }
+
     const filePath = `/uploads/${req.file.filename}`;
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "File uploaded successfully",
       url: filePath,
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+  });
 });
 
 export default uploadRouter;
