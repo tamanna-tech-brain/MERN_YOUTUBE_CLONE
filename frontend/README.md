@@ -1,16 +1,17 @@
-# React + Vite
+# ⚡ StreamPulse Frontend (React 19 + Vite + Tailwind CSS)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The responsive YouTube-clone client application built with React 19, Tailwind CSS, Lucide icons, and Socket.io client.
 
-Currently, two official plugins are available:
+### Features
+- Custom HTML5 Pro Video Player with keyboard shortcuts and theatre mode
+- Real-time live comments via WebSockets
+- Channel subscriptions and watch history
+- Zero-404 SPA routing for Vercel
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Quick Start
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+For full system architecture, pages guide, and deployment instructions, see the root [README.md](../README.md).
