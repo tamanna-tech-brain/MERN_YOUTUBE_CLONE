@@ -86,8 +86,13 @@ app.use("/api/upload", uploadRouter);
 app.use("/api/comment", commentRouter);
 app.use("/api/subscription", subscriptionRouter);
 
-app.get("/api/health", (req, res) => {
-  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+app.get(["/", "/api", "/api/health"], (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "🎬 YouTube Clone Backend API is LIVE and Running!",
+    status: "ok",
+    timestamp: new Date().toISOString()
+  });
 });
 
 const clientBuildPath = path.resolve(process.cwd(), "../frontend/dist");
